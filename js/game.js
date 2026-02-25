@@ -355,6 +355,8 @@
     // ============================================================
     //  Input Setup
     // ============================================================
+    let tiltDetected = false; // Track if we actually received tilt data
+
     function setupInput() {
         window.addEventListener('keydown', e => { keys[e.key] = true; });
         window.addEventListener('keyup', e => { keys[e.key] = false; });
@@ -365,14 +367,22 @@
         canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
         canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
-        // Tilt controls
+        // Tilt controls (non-iOS, auto-detect)
         if (isMobile && window.DeviceOrientationEvent) {
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS 13+ needs permission
-                controlMode = 'touch'; // Default to touch, switch when permission granted
+                // iOS 13+ needs permission on user gesture — handled in start button
+                controlMode = 'touch';
             } else {
+                // Android / other: try to listen, auto-fallback if no data
                 window.addEventListener('deviceorientation', handleOrientation);
                 controlMode = 'tilt';
+
+                // Auto-fallback: if no tilt data after 2 seconds, switch to touch
+                setTimeout(() => {
+                    if (!tiltDetected) {
+                        controlMode = 'touch';
+                    }
+                }, 2000);
             }
         } else if (isMobile) {
             controlMode = 'touch';
@@ -418,6 +428,7 @@
 
     function handleOrientation(e) {
         if (e.gamma !== null) {
+            tiltDetected = true;
             tiltX = e.gamma / 30; // Normalize: -1 to 1
             tiltX = Math.max(-1, Math.min(1, tiltX));
         }
@@ -441,7 +452,15 @@
     //  Button Setup
     // ============================================================
     function setupButtons() {
-        document.getElementById('start-btn').addEventListener('click', () => {
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            // iOS 13+: request tilt permission on this user gesture
+            if (isMobile && typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                const granted = await requestMotionPermission();
+                if (!granted) {
+                    controlMode = 'touch';
+                }
+            }
             startGame();
         });
         document.getElementById('pause-btn').addEventListener('click', () => {
