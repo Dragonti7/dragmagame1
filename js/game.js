@@ -429,7 +429,7 @@
     function handleOrientation(e) {
         if (e.gamma !== null) {
             tiltDetected = true;
-            tiltX = e.gamma / 30; // Normalize: -1 to 1
+            tiltX = e.gamma / 20; // Normalize: -1 to 1 (20 degrees = max speed, more sensitive)
             tiltX = Math.max(-1, Math.min(1, tiltX));
         }
     }
